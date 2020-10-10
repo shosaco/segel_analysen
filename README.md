@@ -1,0 +1,1 @@
+Analyse der Saison 2020: [https://shosaco.github.io/sailing_analyses/](https://shosaco.github.io/sailing_analyses/)

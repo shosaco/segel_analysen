@@ -7,6 +7,11 @@ output:
     theme: architect
 ---
 
+<!-- 
+  md_document:
+    variant: markdown_github
+-->
+    
 ```{r include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message=FALSE)
 ```
@@ -187,4 +192,4 @@ Diese Analyse wurde mit R 4.0.2 erstellt, mithilfe der Visualisierungspakete `Rm
 * `ggmap`
 * `plotKML`
 
-Der Code für alle Berechnungen und Visualisierungen kann in meinem [Github Repository](https://github.com/shosaco/sailing_analyses) heruntergeladen werden.
+Der Code für alle Berechnungen und Visualisierungen kann in meinem [Github Repository](https://github.com/shosaco/sailing_analyses) heruntergeladen werden, diese Seite ist unter [https://shosaco.github.io/sailing_analyses/](https://shosaco.github.io/sailing_analyses/) erreichbar.

@@ -1,0 +1,8 @@
+Regatta/
+for_import/
+*.gpx
+*.csv
+*.mp4
+.Rhistory
+*.gif
+*.xlsx

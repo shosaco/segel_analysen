@@ -1,0 +1,190 @@
+---
+title: "Was kann man aus 150 Seemeilen auf der Alster lernen?"
+author: Sandro Raabe
+date: '`r format(Sys.Date(), "%d. %B %Y")`'
+output:
+  prettydoc::html_pretty:
+    theme: architect
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(readxl)
+library(glue)
+
+gpx_folder_to_tibble <- function(folder){
+  tmp <- map(list.files(folder, pattern = "gpx", full.names=T), plotKML::readGPX) %>% map("tracks")
+  all_dat <- bind_rows(flatten(flatten(tmp))) %>% as_tibble %>% 
+    select(-any_of(c("extensions", "ele"))) %>% 
+    mutate(across(c(lon, lat), as.numeric)) %>% 
+    mutate(across(time, ymd_hms)) %>% distinct() 
+}
+
+# sailing
+waterspeed <- read_csv(list.files("for_import", pattern = "csv", full.names=T)) %>% 
+  select(Lon = Long, Lat, Time = Date) %>% set_names(str_to_lower)
+komoot <- gpx_folder_to_tibble("for_import")
+metadata <- read_excel("Metadaten.xlsx") %>%
+  mutate(across(Datum, dmy)) %>%
+  group_by(Datum) %>% 
+  arrange(desc(Segelpartner)) %>% # damit nicht "allein" gewinnt
+  slice(1) %>% ungroup
+
+all_dat <- bind_rows(waterspeed, komoot) %>% filter(year(time) == 2020) %>% 
+  arrange(time) %>% distinct() %>% 
+  mutate(Datum = date(time), Wochentag = factor(weekdays(Datum), levels = weekdays(ymd("2020-10-12")+0:6))) %>% 
+  left_join(metadata, "Datum")
+
+if (any(is.na(all_dat$Boot))) stop("Boot fehlt manchmal. Metadaten.xlsx nachtragen!")
+```
+
+# Einleitung
+
+Im Sommer 2020 bin ich zur [Ostsee Segler Gemeinschaft e.V.](http://www.osgev.de) gestoßen, ein Segelverein mit ca. 20 Booten und etwa 200 Mitgliedern an der Südwest-Seite der Alster. In diesem Sommer habe ich diese ausgiebig genutzt und meine Segelfertigkeiten verbessert. Einige dieser Törns habe ich per GPS aufgezeichnet und analysiert (2 Törns, Boote *J70* und *Gruben*, waren private Törns, tauchen aber der Vollständigkeit halber in der Analyse mit auf]. Dieses Dokument zeigt die Ergebnisse der Analyse. Die interessantesten Erkenntnisse:
+
+* Mit den **Möwen** bleibt man anscheinend lieber **nahe beim OSG-Steg**
+* Die **Almar und der Conger** kommen **überall hin**
+* **Mittwochs und Samstags** wagt man sich anscheinend **nicht so weit raus**
+* Segelpartner **Erik** folgt mir bis zu den **hintersten Brücken**
+
+# Datenüberblick
+
+Da ich nicht alle Sessions aufgezeichnet habe, folgt hier ein Überblick über die in dieser Analyse verwendeten Daten:
+
+* Zeitraum: `r str_flatten(format(range(date(all_dat$time)), '%A, %d.%m.%Y'), " bis ")`
+* Anzahl **GPS-Punkte: `r format(nrow(all_dat), big.mark = ".")`**
+* Anzahl aufgezeichneter **Tage: `r n_distinct(all_dat$Datum)`**
+* Gesamtstrecke aufgezeichnet: **150 Seemeilen**, entspricht etwa `r round(150*1.8)` km
+* Anzahl gefahrener **Bootstypen: `r n_distinct(all_dat$Boot)`**
+* Anzahl verschiedener **Segelpartner: `r n_distinct(all_dat$Segelpartner)`**
+* `r n_distinct(all_dat$Datum)` Sessions in `r round(as.numeric(difftime(max(all_dat$Datum), min(all_dat$Datum), units="weeks")), 1)` Wochen macht `r (n_distinct(all_dat$Datum)/as.numeric(difftime(max(all_dat$Datum), min(all_dat$Datum), units="weeks"))) %>% round(1)` Sessions pro Woche, oder **1 Session alle `r as.numeric(difftime(max(all_dat$Datum), min(all_dat$Datum), units="days"))/n_distinct(all_dat$Datum)` Tage**
+ 
+
+
+# Wochentage
+
+## Häufigkeitsverteilung
+
+```{r}
+dat <- all_dat %>% distinct(Datum, Wochentag)
+dat %>% ggplot(aes(x = Wochentag, fill = Wochentag)) +
+  geom_histogram(stat = "count") +
+  scale_fill_brewer(palette = "Set3") +
+  theme(legend.position = "none") +
+  labs (x=NULL, y = NULL) +
+    scale_y_continuous(n.breaks = 8)
+```
+
+
+
+> Beobachtung: Mittwochs scheint mir die große Känguruhregatta das Segeln zu vermiesen, bei der vereinsinternen Dienstagsregatta scheint ich jedoch gerne dabei zu sein.
+
+## Räumliche Verteilung
+
+```{r}
+library(ggmap)
+alster_map <- get_stamenmap(c(left=9.99, right=10.02, bottom=53.555, top=53.583), zoom=15)
+draw_map <- function(col_var, nrow){
+  ggmap(alster_map) + geom_point(data = all_dat,
+                                 aes_string("lon","lat", color = col_var), size=0.1, alpha=0.7) + 
+    # scale_color_manual(values = randomcoloR::distinctColorPalette(n_distinct(all_dat[[col_var]]))) +
+    scale_color_manual(values = rainbow(15)) + #rep(RColorBrewer::brewer.pal(12, "Set3"), 2)) +
+    #guides(color = guide_legend(override.aes = list(size = 4, alpha = 1))) +
+    theme(legend.position = "none", axis.ticks = element_blank(), axis.text = element_blank(), axis.title = element_blank()) +
+    facet_wrap(col_var, nrow = nrow)
+}
+```
+
+```{r}
+draw_map("Wochentag", nrow = 2)
+
+```
+
+> Beobachtung: Mittwochs und Samstags wagt man sich anscheinend nicht so weit raus.
+
+# Bootstypen
+
+## Häufigkeitsverteilung
+
+```{r}
+make_hist <- function(fill_var, dat = all_dat){
+  d <- dat %>% distinct_at(c("Datum", fill_var)) %>% set_names("Datum", "x") %>% 
+    mutate(across(x, ~reorder(.x, .x, function(x) -length(x)))) %>% 
+    count(x)
+  
+  ggplot(d, aes(x, n, fill = x)) +
+    geom_bar(stat = "identity") +
+    ggtitle(glue("Anzahl Sessions pro {fill_var}")) +
+    theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust=1, vjust=1)) +
+    labs (x=NULL, y = NULL)+
+    scale_fill_manual(values = randomcoloR::distinctColorPalette(n_distinct(dat[[fill_var]]))) +
+    scale_y_continuous(n.breaks = max(d$n))
+}
+
+dat_boote <- all_dat %>% distinct(Datum, Boot) %>% count(Boot) %>% slice_max(n) 
+make_hist("Boot")
+```
+
+Mit `r  dat_boote$n` Sessions war `r dat_boote$Boot` mein beliebtestes Boot. Dies lag zum einen daran, dass es ein sehr anfängerfreundliches Boot ist (ich habe meinen Segelschein erst Ende 2019 abgelegt und habe davor noch nie ein Segelboot betreten), der andere Grund findet sich in der Analyse der Segelpartner.
+
+## Räumliche Verteilung
+
+```{r}
+draw_map("Boot", nrow = 2)
+```
+
+> Beobachtung: Mit Conger und Schwertzugvogel (Almar) kommt man überall hin, mit der Möwe bleibt man lieber nahe beim OSG-Steg.
+
+
+# Segelpartner
+
+## Häufigkeitsverteilung
+
+```{r}
+dat_segelpartner <- all_dat %>% distinct(Datum, Segelpartner) %>% count(Segelpartner) %>% slice_max(n) 
+make_hist("Segelpartner")
+```
+
+Mit `r dat_segelpartner$n` Sessions war ich allein am öftesten draußen. Dies lag vor allem an den Corona-bedingten Kontaktbeschränkungen im Mai und Juni 2020 - so musste ich gezwungenermaßen das Einhandsegeln erlernen.
+
+## Räumliche Verteilung
+
+```{r}
+draw_map("Segelpartner", nrow = 3)
+
+```
+
+> Beobachtung: Mit Erik kann man bis zur letzten Brücke fahren...
+
+# Lieblings-Regionen auf der Alster
+
+Achtung Bahnhof: Wir berachten die zweidimensionale Dichte der Wegfunktion. Auf deutsch: Man kann die Alster in kleine Quadrate einteilen und zählen, wie oft jedes Quadrat durchfahren wurde. Die Quadrate färbe ich entsprechend der Häufigkeit ihres Durchfahrens ein - häufige durchfahrene Flächen rot, selten durchfahrene grün. So wie eine Corona-Hotspot-Karte eben.
+
+```{r}
+ggmap(alster_map) + stat_density2d(aes(x=lon, y=lat,fill=..level.., alpha=..level..), data=all_dat, geom="polygon")+ 
+    scale_fill_gradient(low = "green", high = "red") +
+  theme(legend.position = "none", axis.ticks = element_blank(), axis.text = element_blank(), axis.title = element_blank())
+```
+
+> Die roten Hotspots könnten die Dienstagsregatta-Runden sein, der Vereinssteg unten links ist ebenfalls deutlich zu sehen.
+
+# Danke OSG!
+
+# Credits
+Diese Analyse wurde mit R 4.0.2 erstellt, mithilfe der Visualisierungspakete `Rmarkdown`, `prettydoc` und folgenden nützlichen Helfern: 
+
+* `tidyverse`
+* `readxl`
+* `lubridate`
+* `glue`
+* `RColorBrewer`
+* `randomcoloR`
+* `ggmap`
+* `plotKML`
+
+Der Code für alle Berechnungen und Visualisierungen kann in meinem [Github Repository](https://github.com/shosaco/sailing_analyses) heruntergeladen werden.

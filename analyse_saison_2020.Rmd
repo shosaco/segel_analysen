@@ -17,7 +17,11 @@ knitr::opts_chunk$set(echo = FALSE, message=FALSE)
 ```
 
 ```{r}
-library(tidyverse)
+library(dplyr)
+library(readr)
+library(purrr)
+library(ggplot2)
+library(stringr)
 library(lubridate)
 library(readxl)
 library(glue)
@@ -32,7 +36,7 @@ gpx_folder_to_tibble <- function(folder){
 
 # sailing
 waterspeed <- read_csv(list.files("for_import", pattern = "csv", full.names=T)) %>% 
-  select(Lon = Long, Lat, Time = Date) %>% set_names(str_to_lower)
+  select(Lon = Long, Lat, Time = Date) %>% rlang::set_names(str_to_lower)
 komoot <- gpx_folder_to_tibble("for_import")
 metadata <- read_excel("Metadaten.xlsx") %>%
   mutate(across(Datum, dmy)) %>%
@@ -181,15 +185,29 @@ ggmap(alster_map) + stat_density2d(aes(x=lon, y=lat,fill=..level.., alpha=..leve
 # Danke OSG!
 
 # Credits
-Diese Analyse wurde mit R 4.0.2 erstellt, mithilfe der Visualisierungspakete `Rmarkdown`, `prettydoc` und folgenden nützlichen Helfern: 
+Diese Analyse wurde mit R 4.0.2 und folgenden nützlichen Helfern erstellt: 
 
-* `tidyverse`
-* `readxl`
-* `lubridate`
-* `glue`
-* `RColorBrewer`
-* `randomcoloR`
-* `ggmap`
-* `plotKML`
+* Data Input:
+  * `readr`
+  * `readxl`
+  
+* Data Wrangling:
+  * `dplyr`
+  * `purrr`
+  * `lubridate`
+  * `glue`
+
+* Grafik:
+  * `ggplot2`
+  * `RColorBrewer`
+  * `randomcoloR`
+  
+* Geoanalyse:
+  * `ggmap`
+  * `plotKML`
+  
+* Output:
+  * `Rmarkdown`
+  * `prettydoc`
 
 Der Code für alle Berechnungen und Visualisierungen kann in meinem [Github Repository](https://github.com/shosaco/sailing_analyses) heruntergeladen werden, diese Seite ist unter [https://shosaco.github.io/sailing_analyses/](https://shosaco.github.io/sailing_analyses/) erreichbar.

@@ -6,3 +6,5 @@ for_import/
 .Rhistory
 *.gif
 *.xlsx
+analyse_saison_2020_files/
+Saison_2020.R

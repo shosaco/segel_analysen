@@ -1,5 +1,5 @@
 ---
-title: "Was kann man aus 150 Seemeilen auf der Alster lernen?"
+title: "Was kann man aus 175 Seemeilen auf der Alster lernen? (oder: Was macht macht ein segelnder Data Scientist eigentlich im Herbst?)"
 author: Sandro Raabe
 date: '`r format(Sys.Date(), "%d. %B %Y")`'
 output:
@@ -8,45 +8,55 @@ output:
 ---
 
 <!-- 
-  md_document:
-    variant: markdown_github
+md_document:
+variant: markdown_github
 -->
-    
+
 ```{r include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message=FALSE)
 ```
 
 ```{r}
+library(XML)
 library(dplyr)
 library(readr)
+library(tidyr)
 library(purrr)
 library(ggplot2)
 library(stringr)
 library(lubridate)
 library(readxl)
 library(glue)
+library(highcharter)
 
-gpx_folder_to_tibble <- function(folder){
-  tmp <- map(list.files(folder, pattern = "gpx", full.names=T), plotKML::readGPX) %>% map("tracks")
-  all_dat <- bind_rows(flatten(flatten(tmp))) %>% as_tibble %>% 
-    select(-any_of(c("extensions", "ele"))) %>% 
-    mutate(across(c(lon, lat), as.numeric)) %>% 
-    mutate(across(time, ymd_hms)) %>% distinct() 
+gpx_to_tibble <- function(filename){
+  filename %>%
+    xmlTreeParse(useInternalNodes = TRUE) %>%
+    xmlRoot %>%
+    xmlToList %>%
+    .$trk %>%
+    (function(x) unlist(x[names(x) == "trkseg"], recursive = FALSE)) %>%
+    map_dfr(function(x) as_tibble(t(unlist(x)))) %>% 
+    select(-ele) %>% 
+    set_names(str_remove, ".attrs.") %>% 
+    mutate(across(c("lon", "lat"), as.numeric)) %>% 
+    mutate(across(time, ymd_hms))
 }
 
 # sailing
 waterspeed <- read_csv(list.files("for_import", pattern = "csv", full.names=T)) %>% 
-  select(Lon = Long, Lat, Time = Date) %>% rlang::set_names(str_to_lower)
-komoot <- gpx_folder_to_tibble("for_import")
+  select(Lon = Long, Lat, Time = Date, Course) %>% rlang::set_names(str_to_lower)
+komoot <- list.files("for_import", pattern = ".gpx$", full.names=T) %>% map_dfr(gpx_to_tibble)
 metadata <- read_excel("Metadaten.xlsx") %>%
   mutate(across(Datum, dmy)) %>%
   group_by(Datum) %>% 
   arrange(desc(Segelpartner)) %>% # damit nicht "allein" gewinnt
+  mutate(across(Segelpartner, str_split, " & ")) %>% 
   slice(1) %>% ungroup
 
 all_dat <- bind_rows(waterspeed, komoot) %>% filter(year(time) == 2020) %>% 
   arrange(time) %>% distinct() %>% 
-  mutate(Datum = date(time), Wochentag = factor(weekdays(Datum), levels = weekdays(ymd("2020-10-12")+0:6))) %>% 
+  mutate(Datum = date(time), Wochentag = factor(weekdays(Datum), levels(wday(today(), label=T,abbr = F, week_start = 1)))) %>% 
   left_join(metadata, "Datum")
 
 if (any(is.na(all_dat$Boot))) stop("Boot fehlt manchmal. Metadaten.xlsx nachtragen!")
@@ -68,82 +78,157 @@ Da ich nicht alle Sessions aufgezeichnet habe, folgt hier ein Überblick über d
 * Zeitraum: `r str_flatten(format(range(date(all_dat$time)), '%A, %d.%m.%Y'), " bis ")`
 * Anzahl **GPS-Punkte: `r format(nrow(all_dat), big.mark = ".")`**
 * Anzahl aufgezeichneter **Tage: `r n_distinct(all_dat$Datum)`**
-* Gesamtstrecke aufgezeichnet: **150 Seemeilen**, entspricht etwa `r round(150*1.8)` km
+* Gesamtstrecke aufgezeichnet: **173 Seemeilen**, entspricht etwa `r round(173*1.8)` km
 * Anzahl gefahrener **Bootstypen: `r n_distinct(all_dat$Boot)`**
-* Anzahl verschiedener **Segelpartner: `r n_distinct(all_dat$Segelpartner)`**
-* `r n_distinct(all_dat$Datum)` Sessions in `r round(as.numeric(difftime(max(all_dat$Datum), min(all_dat$Datum), units="weeks")), 1)` Wochen macht `r (n_distinct(all_dat$Datum)/as.numeric(difftime(max(all_dat$Datum), min(all_dat$Datum), units="weeks"))) %>% round(1)` Sessions pro Woche, oder **1 Session alle `r as.numeric(difftime(max(all_dat$Datum), min(all_dat$Datum), units="days"))/n_distinct(all_dat$Datum)` Tage**
- 
+* Anzahl verschiedener **Segelpartner: `r n_distinct(unlist(all_dat$Segelpartner))`**
+* `r n_distinct(all_dat$Datum)` Sessions in `r round(as.numeric(difftime(max(all_dat$Datum), min(all_dat$Datum), units="weeks")), 1)` Wochen macht im Schnitt `r (n_distinct(all_dat$Datum)/as.numeric(difftime(max(all_dat$Datum), min(all_dat$Datum), units="weeks"))) %>% round(1)` Sessions pro Woche, oder **1 Session alle `r round(as.numeric(difftime(max(all_dat$Datum), min(all_dat$Datum), units="days"))/n_distinct(all_dat$Datum), 1)` Tage**
 
+# Zeitlicher Verlauf
+
+Zunächst kann man ohne Aggregation die im Datensatz vorhandenen Tage darstellen.
+
+```{r fig.height=2, fig.width=8, height=200}
+dfr <- tibble(date = seq(ymd("2020-05-01"), ceiling_date(Sys.Date(), 'month'), "day")) %>% 
+  mutate(comment = ifelse(date %in% all_dat$Datum, "ja", "nein"))
+dfr$day <- factor(strftime(dfr$date,format="%a"), levels = rev(levels(wday(today(), label=T, week_start = 1))))
+dfr$week <- factor(strftime(dfr$date,format="%V"))
+dfr$month <- factor(strftime(dfr$date,format="%B"),levels = levels(month(today(), label=T, abbr = F)))
+dfr$ddate <- factor(strftime(dfr$date,format="%d"))
+
+text <- dfr %>% filter(comment=="ja") %>% count(month, sort=T) %>% slice_max(n, n=1) %>% mutate(text = glue("beobachtung: Der {month} war mit {n} Sessions der aktivste Segelmonat.")) %>% pull(text)
+ggplot(dfr,aes(x=week,y=day))+
+  geom_tile(aes(fill=comment))+
+  geom_text(aes(label=ddate))+
+  scale_fill_manual(values=c("green","lightgrey","#fb8072","#d3d3d3"))+
+  facet_grid(~month,scales="free",space="free")+
+  labs(x="Woche",y="")+
+  theme_bw(base_size=10)+
+  theme(legend.title=element_blank(),
+        panel.grid=element_blank(),
+        panel.border=element_blank(),
+        axis.ticks=element_blank(),
+        strip.background=element_blank(),
+        legend.position="none",
+        legend.justification="right",
+        legend.direction="horizontal",
+        legend.key.size=unit(0.3,"cm"),
+        legend.spacing.x=unit(0.2,"cm"),
+        plot.background = element_rect(fill = "transparent"),
+        panel.background = element_rect(fill = "transparent")
+      )
+```
+
+> `r text`
 
 # Wochentage
+
+Nun kann man den Datensatz nach den enthaltenen Variablen stratifizieren, beginnend mit dem Wochentag.
 
 ## Häufigkeitsverteilung
 
 ```{r}
-dat <- all_dat %>% distinct(Datum, Wochentag)
-dat %>% ggplot(aes(x = Wochentag, fill = Wochentag)) +
-  geom_histogram(stat = "count") +
-  scale_fill_brewer(palette = "Set3") +
-  theme(legend.position = "none") +
-  labs (x=NULL, y = NULL) +
-    scale_y_continuous(n.breaks = 8)
+add_colors <- function(df, colname){
+  # make same color vector regardless of shape of levels
+  set.seed(1); 
+  col <- tibble(sort(unique(as.character(df[[colname]])))) %>% 
+    set_names(colname) %>%
+    mutate(col = randomcoloR::distinctColorPalette(n()))
+  if(is.factor(df[[colname]])) col[[colname]] <- factor(col[[colname]], levels = levels(df[[colname]]))
+  df %>% left_join(col, colname)
+}
+
+make_hist <- function(fill_var, dat = all_dat){
+  d <- all_dat %>% distinct_at(c("Datum", fill_var)) %>% set_names("Datum", "x") %>% 
+    unnest(cols=c(x)) %>% 
+    #mutate(across(x, ~reorder(.x, .x, function(x) -length(x)))) %>% 
+    count(x)
+  
+  if(fill_var != "Wochentag") d <- d %>% arrange(desc(n))
+  d <- add_colors(d, "x")
+  
+  highchart() %>% hc_chart(type = "column") %>%
+    hc_add_series(data = d$n, name = "Anzahl Sessions",
+                  showInLegend = FALSE,
+                  dataLabels = list(enabled = TRUE)) %>% 
+    hc_title(text = glue("Anzahl Sessions pro {fill_var}")) %>% 
+    hc_yAxis(text = NULL) %>% 
+    hc_xAxis(text = NULL, categories = d$x) %>% 
+    hc_colors(d$col) %>% 
+    hc_plotOptions(column = list(colorByPoint = TRUE))
+}
+make_hist("Wochentag")
 ```
 
-
-
-> Beobachtung: Mittwochs scheint mir die große Känguruhregatta das Segeln zu vermiesen, bei der vereinsinternen Dienstagsregatta scheint ich jedoch gerne dabei zu sein.
+> Beobachtung: Mittwochs scheint mir die große Känguruhregatta das Segeln zu vermiesen, bei der vereinsinternen Dienstagsregatta scheint ich jedoch gerne dabei zu sein. (Oder: Nach der Dienstagsregatta bin ich so durch, dass Mittwochs gar nichts geht?)
 
 ## Räumliche Verteilung
 
-```{r}
+```{r fig.height=8, fig.width=10}
 library(ggmap)
 alster_map <- get_stamenmap(c(left=9.99, right=10.02, bottom=53.555, top=53.583), zoom=15)
 draw_map <- function(col_var, nrow){
-  ggmap(alster_map) + geom_point(data = all_dat,
-                                 aes_string("lon","lat", color = col_var), size=0.1, alpha=0.7) + 
-    # scale_color_manual(values = randomcoloR::distinctColorPalette(n_distinct(all_dat[[col_var]]))) +
-    scale_color_manual(values = rainbow(15)) + #rep(RColorBrewer::brewer.pal(12, "Set3"), 2)) +
-    #guides(color = guide_legend(override.aes = list(size = 4, alpha = 1))) +
+  dat <- all_dat %>% unnest(cols=c(col_var))
+  if(col_var != "Wochentag"){
+    counts <- dat %>% distinct_at(c("Datum", all_of(col_var))) %>% count(get(col_var), sort=T) %>% set_names(c("x", "n"))
+    dat <- dat %>% mutate(across(col_var, factor, levels = counts$x))
+  }else{
+    
+  }
+  dat <- add_colors(dat, col_var)
+  
+  # durch unnest werden Strecken doppelt bei 2 Segelpartnern gezeichnet -> ok!
+  ggmap(alster_map) + geom_point(data = dat,
+                                 aes(lon,lat, color = I(col)), size=0.1, alpha=0.7) + 
     theme(legend.position = "none", axis.ticks = element_blank(), axis.text = element_blank(), axis.title = element_blank()) +
-    facet_wrap(col_var, nrow = nrow)
+    facet_wrap(col_var, nrow = nrow) +
+    theme(
+        plot.background = element_rect(fill = "transparent"),
+        panel.background = element_rect(fill = "transparent")
+      )
 }
-```
 
-```{r}
 draw_map("Wochentag", nrow = 2)
 
 ```
 
 > Beobachtung: Mittwochs und Samstags wagt man sich anscheinend nicht so weit raus.
 
+# Gefahrene Peilungen
+
+Zu jedem GPS-Punkt ist die momentane Peilung bekannt (die "Fahrtrichtung"). Dies können wir auszählen und als Histogramm (Häufigkeitsdiagramm) wie eine Kompassrose darstellen:
+
+```{r}
+all_dat %>% mutate(bin = cut(course, breaks = seq(-1,361, 3))) %>% 
+  filter(!is.na(bin)) %>% count(bin) %>% 
+  hchart("column", hcaes(x = bin, y = n)) %>% 
+  hc_chart(polar = TRUE) %>% 
+  hc_title(text = "Kompasspeilungen nach Häufigkeit") %>% 
+  hc_yAxis(title = list(text = NULL), labels = list(enabled = F)) %>% 
+  hc_xAxis(title = list(text = NULL), labels = list(enabled =F))
+
+
+```
+
+Der Kurs um 15° (Nord-Nordost) sowie 165° (Süd-Südost) scheint bei mir sehr beliebt zu sein. Schaut man sich die geografische Form der Alster an, ist dies unmittelbar einsichtig: Als langgestrecktes Nord-Süd-Revier fährt man eben mehr "hoch und runter" statt "rechts und links", mit leichter Tendenz, zu Beginn "nach Nordost" zu fahren.
+
+> Beobachtung: Der übliche Start-Weg vom OSG-Steg geht nach Nord-Nordost
+
 # Bootstypen
 
 ## Häufigkeitsverteilung
 
 ```{r}
-make_hist <- function(fill_var, dat = all_dat){
-  d <- dat %>% distinct_at(c("Datum", fill_var)) %>% set_names("Datum", "x") %>% 
-    mutate(across(x, ~reorder(.x, .x, function(x) -length(x)))) %>% 
-    count(x)
-  
-  ggplot(d, aes(x, n, fill = x)) +
-    geom_bar(stat = "identity") +
-    ggtitle(glue("Anzahl Sessions pro {fill_var}")) +
-    theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust=1, vjust=1)) +
-    labs (x=NULL, y = NULL)+
-    scale_fill_manual(values = randomcoloR::distinctColorPalette(n_distinct(dat[[fill_var]]))) +
-    scale_y_continuous(n.breaks = max(d$n))
-}
-
 dat_boote <- all_dat %>% distinct(Datum, Boot) %>% count(Boot) %>% slice_max(n) 
 make_hist("Boot")
 ```
 
 Mit `r  dat_boote$n` Sessions war `r dat_boote$Boot` mein beliebtestes Boot. Dies lag zum einen daran, dass es ein sehr anfängerfreundliches Boot ist (ich habe meinen Segelschein erst Ende 2019 abgelegt und habe davor noch nie ein Segelboot betreten), der andere Grund findet sich in der Analyse der Segelpartner.
 
+> Beobachtung: Auf Conger ist gut Segeln lernen
+
 ## Räumliche Verteilung
 
-```{r}
+```{r fig.height=6, fig.width=10}
 draw_map("Boot", nrow = 2)
 ```
 
@@ -155,32 +240,62 @@ draw_map("Boot", nrow = 2)
 ## Häufigkeitsverteilung
 
 ```{r}
-dat_segelpartner <- all_dat %>% distinct(Datum, Segelpartner) %>% count(Segelpartner) %>% slice_max(n) 
-make_hist("Segelpartner")
+lvl_opts <-  list(
+  list(
+    level = 1,
+    color = "yellow",
+    borderWidth = 5,
+    borderColor = "white",
+    dataLabels = list(
+      enabled = TRUE,
+      align = "left",
+      verticalAlign = "top",
+      style = list(fontSize = "14px", textOutline = FALSE, fontWeight = "regular")
+    )
+  )
+)
+
+dat <- all_dat %>% unnest(cols = c(Segelpartner)) %>% 
+  distinct(Datum, Segelpartner) %>% 
+  mutate(n=1) %>% 
+  data_to_hierarchical(group_vars = Segelpartner, size_var = n) %>% 
+  bind_rows() %>% 
+  add_colors("name") %>% 
+  select(-color) %>% 
+  rename(color = col) %>% as.list %>% transpose()
+
+hchart(dat, type = "treemap", 
+       levels = lvl_opts,
+       tooltip = list(valueDecimals = 0, valueSuffix = " Sessions")) %>% 
+  hc_title(text = glue("Segelpartner - Größe entspricht Anzahl Sessions"))
 ```
 
-Mit `r dat_segelpartner$n` Sessions war ich allein am öftesten draußen. Dies lag vor allem an den Corona-bedingten Kontaktbeschränkungen im Mai und Juni 2020 - so musste ich gezwungenermaßen das Einhandsegeln erlernen.
+Mit `r bind_rows(dat) %>% slice_max(value) %>% pull(value)` Sessions war ich allein am öftesten draußen. Dies lag vor allem an den Corona-bedingten Kontaktbeschränkungen im Mai und Juni 2020 - so musste ich gezwungenermaßen das Einhandsegeln erlernen.
 
 ## Räumliche Verteilung
 
-```{r}
+```{r fig.height=10, fig.width=10}
 draw_map("Segelpartner", nrow = 3)
 
 ```
 
-> Beobachtung: Mit Erik kann man bis zur letzten Brücke fahren...
+> Beobachtung: Mit Erik und Leo kann man bis zur letzten Brücke fahren, mit Felix zur Alsterperle.
 
 # Lieblings-Regionen auf der Alster
 
-Achtung Bahnhof: Wir berachten die zweidimensionale Dichte der Wegfunktion. Auf deutsch: Man kann die Alster in kleine Quadrate einteilen und zählen, wie oft jedes Quadrat durchfahren wurde. Die Quadrate färbe ich entsprechend der Häufigkeit ihres Durchfahrens ein - häufige durchfahrene Flächen rot, selten durchfahrene grün. So wie eine Corona-Hotspot-Karte eben.
+Achtung Bahnhof: Wir betrachten die zweidimensionale Dichte der Wegfunktion. Auf deutsch: Man kann die Alster in kleine Quadrate einteilen und zählen, wie oft jedes Quadrat durchfahren wurde. Die Quadrate färbe ich entsprechend der Häufigkeit ihres Durchfahrens ein - häufige durchfahrene Flächen rot, selten durchfahrene grün. So wie eine Corona-Hotspot-Karte eben.
 
 ```{r}
 ggmap(alster_map) + stat_density2d(aes(x=lon, y=lat,fill=..level.., alpha=..level..), data=all_dat, geom="polygon")+ 
-    scale_fill_gradient(low = "green", high = "red") +
-  theme(legend.position = "none", axis.ticks = element_blank(), axis.text = element_blank(), axis.title = element_blank())
+  scale_fill_gradient(low = "green", high = "red") +
+  theme(legend.position = "none", axis.ticks = element_blank(), 
+        axis.text = element_blank(), 
+        axis.title = element_blank(),
+        plot.background = element_rect(fill = "transparent"),
+        panel.background = element_rect(fill = "transparent"))
 ```
 
-> Die roten Hotspots könnten die Dienstagsregatta-Runden sein, der Vereinssteg unten links ist ebenfalls deutlich zu sehen.
+> Beobachtung: Die roten Hotspots könnten die Dienstagsregatta-Runden sein, der Vereinssteg unten links ist ebenfalls deutlich zu sehen.
 
 # Danke OSG!
 
@@ -190,10 +305,11 @@ Diese Analyse wurde mit R 4.0.2 und folgenden nützlichen Helfern erstellt:
 * Data Input:
   * `readr`
   * `readxl`
-  
+
 * Data Wrangling:
   * `dplyr`
   * `purrr`
+  * `tidyr`
   * `lubridate`
   * `glue`
 
@@ -201,11 +317,11 @@ Diese Analyse wurde mit R 4.0.2 und folgenden nützlichen Helfern erstellt:
   * `ggplot2`
   * `RColorBrewer`
   * `randomcoloR`
-  
+
 * Geoanalyse:
   * `ggmap`
-  * `plotKML`
-  
+  * `XML`
+
 * Output:
   * `Rmarkdown`
   * `prettydoc`

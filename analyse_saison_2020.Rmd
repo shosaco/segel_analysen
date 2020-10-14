@@ -1,5 +1,5 @@
 ---
-title: "Was kann man aus 175 Seemeilen auf der Alster lernen? (oder: Was macht macht ein segelnder Data Scientist eigentlich im Herbst?)"
+title: "Was kann man aus 175 Seemeilen auf der Alster lernen? (oder: Was macht ein segelnder Data Scientist eigentlich im Herbst?)"
 author: Sandro Raabe
 date: '`r format(Sys.Date(), "%d. %B %Y")`'
 output:
@@ -69,7 +69,7 @@ Im Sommer 2020 bin ich zur [Ostsee Segler Gemeinschaft e.V.](http://www.osgev.de
 * Mit den **Möwen** bleibt man anscheinend lieber **nahe beim OSG-Steg**
 * Die **Almar und der Conger** kommen **überall hin**
 * **Mittwochs und Samstags** wagt man sich anscheinend **nicht so weit raus**
-* Segelpartner **Erik** folgt mir bis zu den **hintersten Brücken**
+* Segelpartner **Erik und Leo** folgt mir bis zu den **hintersten Brücken**, **Felix** bis zur **Alsterperle**.
 
 # Datenüberblick
 
@@ -95,7 +95,7 @@ dfr$week <- factor(strftime(dfr$date,format="%V"))
 dfr$month <- factor(strftime(dfr$date,format="%B"),levels = levels(month(today(), label=T, abbr = F)))
 dfr$ddate <- factor(strftime(dfr$date,format="%d"))
 
-text <- dfr %>% filter(comment=="ja") %>% count(month, sort=T) %>% slice_max(n, n=1) %>% mutate(text = glue("beobachtung: Der {month} war mit {n} Sessions der aktivste Segelmonat.")) %>% pull(text)
+text <- dfr %>% filter(comment=="ja") %>% count(month, sort=T) %>% slice_max(n, n=1) %>% mutate(text = glue("Beobachtung: Der {month} war mit {n} Sessions der aktivste Segelmonat.")) %>% pull(text)
 ggplot(dfr,aes(x=week,y=day))+
   geom_tile(aes(fill=comment))+
   geom_text(aes(label=ddate))+
@@ -186,6 +186,8 @@ draw_map <- function(col_var, nrow){
         panel.background = element_rect(fill = "transparent")
       )
 }
+
+# TODO: change levels to "Alle Montage"
 
 draw_map("Wochentag", nrow = 2)
 
@@ -297,10 +299,14 @@ ggmap(alster_map) + stat_density2d(aes(x=lon, y=lat,fill=..level.., alpha=..leve
 
 > Beobachtung: Die roten Hotspots könnten die Dienstagsregatta-Runden sein, der Vereinssteg unten links ist ebenfalls deutlich zu sehen.
 
-# Danke OSG!
+# Anmerkungen, Limiterungen und Ausblick
+
+* nicht alle Tracks habe ich mitgeschnitten (nur schätzungsweise 80%)
+* ...
 
 # Credits
-Diese Analyse wurde mit R 4.0.2 und folgenden nützlichen Helfern erstellt: 
+
+Die Datensammlung erfolgt mit den Apps Komoot und Waterspeed, diese Analyse wurde mit R 4.0.2 und folgenden nützlichen Helfern erstellt: 
 
 * Data Input:
   * `readr`

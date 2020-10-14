@@ -302,11 +302,16 @@ ggmap(alster_map) + stat_density2d(aes(x=lon, y=lat,fill=..level.., alpha=..leve
 # Anmerkungen, Limiterungen und Ausblick
 
 * nicht alle Tracks habe ich mitgeschnitten (nur schätzungsweise 80%)
+* außer den 175 Seemeilen auf der Alster bin ich im Jahr 2020 noch 280 Seemeilen auf der Ostsee unterwegs gewesen - diese sind hier außen vor, wären allerdings eine eigene Analyse wert
 * ...
 
 # Credits
 
-Die Datensammlung erfolgt mit den Apps Komoot und Waterspeed, diese Analyse wurde mit R 4.0.2 und folgenden nützlichen Helfern erstellt: 
+Danke OSG für die tolle Gemeinschaft, die tollen Boote und die tollen Angebote!
+
+# Technisches
+
+Die Datensammlung erfolgt mit den Apps [Komoot](https://www.komoot.de/) und [Waterspeed](https://www.waterspeedapp.com/), diese Analyse wurde mit [R 4.0.2](https://www.r-project.org/) und folgenden nützlichen Helfern erstellt: 
 
 * Data Input:
   * `readr`

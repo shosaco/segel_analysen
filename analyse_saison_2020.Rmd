@@ -1,6 +1,6 @@
 ---
-title: "Was kann man aus über 200 Jollen-Meilen auf der Alster lernen?"
-subtitle: "oder: Was macht ein segelnder Data Scientist eigentlich im Herbst?"
+title: "Explorative Datenanalyse von Geodaten in R"
+subtitle: "Was kann man aus 220 Jollen-Meilen auf der Alster lernen? (Oder: Was macht ein segelnder Data Scientist eigentlich im Herbst?)"
 author: Sandro Raabe
 date: '`r format(Sys.Date(), "%d. %B %Y")`'
 output:
@@ -14,10 +14,10 @@ variant: markdown_github
 -->
 
 ```{r include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message=FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
 ```
 
-```{r message=FALSE, warning=FALSE}
+```{r}
 library(XML)
 library(dplyr)
 library(readr)
@@ -28,6 +28,8 @@ library(stringr)
 library(lubridate)
 library(readxl)
 library(glue)
+library(leaflet)
+library(ggmap)
 library(highcharter)
 library(yarrr)
 
@@ -78,9 +80,12 @@ all_dat <- bind_rows(waterspeed, komoot) %>% filter(year(time) == 2020) %>%
 if (any(is.na(all_dat$Boot))) stop("Boot fehlt manchmal. Metadaten.xlsx nachtragen!")
 ```
 
-# Einleitung
+# Management Summary
 
-Im Frühjahr 2020 bin ich zur [Ostsee Segler Gemeinschaft e.V.](http://www.osgev.de) gestoßen, ein Segelverein mit ca. 20 Booten und etwa 200 Mitgliedern an der Südwest-Seite der Alster. In diesem Sommer habe ich diese ausgiebig genutzt und meine Segelfertigkeiten verbessert (oder überhaupt erst aufgebaut). Einige dieser Törns habe ich per GPS aufgezeichnet und analysiert. Dieses Dokument zeigt die Ergebnisse der Analyse. Einige Erkenntnisse:
+Dies ist eine Fallstudie zur **explorativen Datenanalyse** auf selbst gesammelten GPS-Daten. Anhand verschiedener Visualisierungen kann man Zusammenhänge erkunden, die jedoch nicht weitergehend durch Hypothesentests untersucht werden.
+
+# Einleitung
+Im Frühjahr 2020 bin ich zur [Ostsee Segler Gemeinschaft e.V.](http://www.osgev.de) gestoßen, ein Segelverein mit ca. 20 Booten und etwa 200 Mitgliedern an der Südwest-Seite der Alster. In diesem Sommer habe ich diese ausgiebig genutzt und meine Segelfertigkeiten aufgebaut. Einige dieser Törns habe ich per GPS aufgezeichnet und mit verschiedenen Visualisierungswerkzeugen untersucht. Einige Erkenntnisse:
 
 * **Mittwochs** geh ich ungern segeln.
 * **Donnerstags** ist Alster-Erkundungstag.
@@ -89,6 +94,7 @@ Im Frühjahr 2020 bin ich zur [Ostsee Segler Gemeinschaft e.V.](http://www.osgev
 * **Conger** sind die *Brot-und-Butter-Boote*.
 * **Corona** verhilft zu **Einhandsegler-Skills**.
 * Regatta-GPS-Tracks sehen aus wie **Wollknäuel**.
+* Die Mitte der Alster ist (wie zu erwarten) der **Segel-Hotspot**.
 
 
 # Datenüberblick
@@ -153,7 +159,7 @@ Nun kann man den Datensatz nach den enthaltenen Variablen stratifizieren, beginn
 ```{r}
 add_colors <- function(df, colname){
   # make same color vector regardless of shape of levels
-  set.seed(1)
+  set.seed(123)
   col <- tibble(sort(unique(as.character(df[[colname]])))) %>% 
     set_names(colname) %>%
     mutate(col = randomcoloR::distinctColorPalette(n()))
@@ -187,35 +193,59 @@ make_hist("Wochentag")
 
 ## Räumliche Verteilung
 
-```{r fig.height=8, fig.width=10}
+Wir benutzen das Paket `Leaflet` zur interaktiven Darstellung aller GPS-Tracks (per Maus kann gezoomt werden, die Legende dient zur Umschaltung der verschiedenen Wochentage):
+
+```{r fig.height=6, fig.width=10}
 library(ggmap)
-alster_map <- get_stamenmap(c(left=9.99, right=10.02, bottom=53.555, top=53.583), zoom=15)
+alster_map <- get_stamenmap(c(left=9.99, right=10.02, bottom=53.555, top=53.583), zoom=15, maptype = "toner-lite")
 draw_map <- function(col_var, nrow){
   dat <- all_dat %>% unnest(cols=c(col_var))
   if(col_var != "Wochentag"){
     counts <- dat %>% distinct_at(c("Datum", all_of(col_var))) %>% count(get(col_var), sort=T) %>% set_names(c("x", "n"))
-    dat <- dat %>% mutate(across(col_var, factor, levels = counts$x))
+    dat <- dat %>% mutate(across(all_of(col_var), factor, levels = counts$x))
   }
   dat <- add_colors(dat, col_var)
-  
+
   # durch unnest werden Strecken doppelt bei 2 Segelpartnern gezeichnet -> ok!
   out <- ggmap(alster_map) + geom_point(data = dat,
-                                        aes(lon,lat, color = I(col)), size=0.1, alpha=0.7) + 
+                                        aes(lon,lat, color = I(col)), size=0.1, alpha=0.7) +
     theme(legend.position = "none", axis.ticks = element_blank(), axis.text = element_blank(), axis.title = element_blank()) +
     theme(
       plot.background = element_rect(fill = "transparent"),
       panel.background = element_rect(fill = "transparent")
     )
   if (col_var == "Wochentag"){
-    out <- out + facet_wrap(col_var, nrow = nrow, labeller = as_labeller(setNames(unique(glue("Alle {t}e", t = all_dat[[col_var]])), unique(all_dat[[col_var]])))) 
+    out <- out + facet_wrap(col_var, nrow = nrow, labeller = as_labeller(setNames(unique(glue("Alle {t}e", t = all_dat[[col_var]])), unique(all_dat[[col_var]]))))
   }else{
-    out <- out + 
+    out <- out +
       facet_wrap(col_var, nrow = nrow)
   }
   out
 }
 
-draw_map("Wochentag", nrow = 2)
+draw_leaflet <- function(col_var){
+  dat <- all_dat %>% unnest(cols=c(col_var))
+  if(col_var != "Wochentag"){
+    counts <- dat %>% distinct(across(c("Datum", all_of(col_var)))) %>% count(get(col_var), sort=T) %>% set_names(c("x", "n"))
+    dat <- dat %>% mutate(across(all_of(col_var), factor, levels = counts$x))
+  }
+  dat <- add_colors(dat, col_var) %>% arrange(across(c(all_of(col_var), "Datum")))
+   
+  all_polylines <- dat %>% group_by(across(all_of(col_var))) %>% summarize(across(c(lon, lat), list), .groups = "drop") %>% select(2:3)
+  lons <- all_polylines$lon
+  lats <- all_polylines$lat
+  cols <- unique(dat$col)
+  groups <- unique(dat[[col_var]])
+  base <- leaflet() %>% addProviderTiles("CartoDB")  %>%  
+    fitBounds(  lng1 =9.99, lng2 = 10.02,  lat1 = 53.555, lat2 = 53.583)
+  
+  for (i in seq_along(lons)){
+    base <- base %>% addPolylines(lons[[i]], lats[[i]], color = cols[i], group = groups[i], weight = 1.5, opacity = 0.7)
+  }
+  base <- base %>% addLayersControl(baseGroups = groups, options = layersControlOptions(collapsed = FALSE))
+  return(base)
+}
+draw_leaflet("Wochentag") #, nrow = 2)
 
 ```
 
@@ -258,7 +288,7 @@ Mit `r  dat_boote$n` Sessions war `r dat_boote$Boot` mein beliebtestes Boot. Die
 ## Räumliche Verteilung
 
 ```{r fig.height=6, fig.width=10}
-draw_map("Boot", nrow = 2)
+draw_leaflet("Boot")#, nrow = 2)
 ```
 
 > Beobachtung: Mit Conger und Kielzugvogel kommt man überall hin, mit der Möwe bleibt man lieber nahe beim OSG-Steg.
@@ -317,6 +347,8 @@ Mit `r bind_rows(dat) %>% slice_max(value) %>% pull(value)` Sessions war ich all
 
 ## Räumliche Verteilung der Segelpartner
 
+Hierfür verwenden wir eine statische Darstellung der GPS-Strecken:
+
 ```{r fig.height=10, fig.width=10}
 draw_map("Segelpartner", nrow = 3)
 
@@ -342,13 +374,14 @@ ggmap(alster_map) + stat_density2d(aes(x=lon, y=lat,fill=..level.., alpha=..leve
 
 # Ausblick
 
-Dies ist nur eine kleine und meist univariate Auswertung der Saison 2020, überwiegend univariat und ohne wissenschaftliche Abhandlung oder Hypothesentests. Man könnte noch mehr Fragen untersuchen, wie zum Beispiel:
+Dies ist nur eine kleine, visualisierungsgetriebene explorative Analyse der Saison 2020, überwiegend univariat und ohne Überprüfung der aufgestellten Hypothesen. Aus dieser ergeben sich untersuchenswerte Fragen:
 
-* Zusammenhang zwischen Bootslänge und Geschwindigkeit
-* Zusammenhang zwischen Windrichtung und Fahrtrichtungen
-* Zusammenhang zwischen Windgeschwindigkeiten und Bootstypen (Wann nehme ich welches Boot?)
-* Außer den 200 Seemeilen auf der Alster bin ich im Jahr 2020 noch 280 Seemeilen auf der Ostsee unterwegs gewesen - diese sind hier außen vor, wären allerdings eine eigene Analyse wert
+* Gibt es einen Zusammenhang zwischen Bootslänge und Geschwindigkeit?
+* Gibt es einen Zusammenhang zwischen Windrichtung und Fahrtrichtungen?
+* Gibt es einen Zusammenhang zwischen Windgeschwindigkeiten und Bootstypen (Wann nehme ich welches Boot?)
+* Außer den `r anz` Seemeilen auf der Alster bin ich im Jahr 2020 noch 280 Seemeilen auf der Ostsee unterwegs gewesen - diese sind hier außen vor, wären allerdings eine eigene Analyse wert.
 
+Diese Fragen könnte man mit Hypothesentests oder anderen *Machine Learning*-Methoden untersuchen, was hier zunächst zu weit führen würde. Die Chips im Keller glühen jedoch schon und 2021 ist auch noch ein Jahr :-)
 
 # Credits
 
@@ -376,7 +409,8 @@ Die Datensammlung erfolgt mit den Apps [Komoot](https://www.komoot.de/) und [Wat
   * `yarrr`
 
 * Geoanalyse:
-  * `ggmap`
+  * [`Leaflet`](https://CRAN.R-project.org/package=leaflet)
+  * [`ggmap`](http://journal.r-project.org/archive/2013-1/kahle-wickham.pdf)
   * `XML`
 
 * Output:

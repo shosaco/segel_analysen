@@ -13,8 +13,15 @@ md_document:
 variant: markdown_github
 -->
 
+
+
 ```{r include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+```
+
+
+```{r out.width = "100%", fig.align = "default"}
+knitr::include_graphics("for_import/2019-05-23 20.59.38.jpg")
 ```
 
 ```{r}
@@ -174,8 +181,7 @@ make_hist <- function(fill_var, dat = all_dat){
     count(x)
   
   if(fill_var != "Wochentag") d <- d %>% arrange(desc(n))
-  d <- add_colors(d, "x")
-  
+
   highchart() %>% hc_chart(type = "column") %>%
     hc_add_series(data = d$n, name = "Anzahl Sessions",
                   showInLegend = FALSE,
@@ -183,7 +189,7 @@ make_hist <- function(fill_var, dat = all_dat){
     hc_title(text = glue("Anzahl Sessions pro {fill_var}")) %>% 
     hc_yAxis(text = NULL) %>% 
     hc_xAxis(text = NULL, categories = d$x) %>% 
-    hc_colors(d$col) %>% 
+    hc_colors("#9E9E9E") %>% 
     hc_plotOptions(column = list(colorByPoint = TRUE))
 }
 make_hist("Wochentag")
@@ -193,19 +199,24 @@ make_hist("Wochentag")
 
 ## Räumliche Verteilung
 
-Wir benutzen das Paket `Leaflet` zur interaktiven Darstellung aller GPS-Tracks (per Maus kann gezoomt werden, die Legende dient zur Umschaltung der verschiedenen Wochentage):
+Wir benutzen das Paket `Leaflet` zur interaktiven Darstellung aller GPS-Tracks (per Mausrad oder Buttons kann gezoomt werden, die Legende dient zur Umschaltung der verschiedenen Wochentage):
 
 ```{r fig.height=6, fig.width=10}
 library(ggmap)
 alster_map <- get_stamenmap(c(left=9.99, right=10.02, bottom=53.555, top=53.583), zoom=15, maptype = "toner-lite")
-draw_map <- function(col_var, nrow){
+draw_map <- function(col_var, nrow, colorize=FALSE){
   dat <- all_dat %>% unnest(cols=c(col_var))
   if(col_var != "Wochentag"){
     counts <- dat %>% distinct_at(c("Datum", all_of(col_var))) %>% count(get(col_var), sort=T) %>% set_names(c("x", "n"))
     dat <- dat %>% mutate(across(all_of(col_var), factor, levels = counts$x))
   }
-  dat <- add_colors(dat, col_var)
-
+  
+  if(!colorize){
+    dat$col <-   "#9E9E9E"
+  }else{
+    dat <- add_colors(dat, col_var)
+  }
+  
   # durch unnest werden Strecken doppelt bei 2 Segelpartnern gezeichnet -> ok!
   out <- ggmap(alster_map) + geom_point(data = dat,
                                         aes(lon,lat, color = I(col)), size=0.1, alpha=0.7) +
@@ -234,13 +245,13 @@ draw_leaflet <- function(col_var){
   all_polylines <- dat %>% group_by(across(all_of(col_var))) %>% summarize(across(c(lon, lat), list), .groups = "drop") %>% select(2:3)
   lons <- all_polylines$lon
   lats <- all_polylines$lat
-  cols <- unique(dat$col)
+  
   groups <- unique(dat[[col_var]])
   base <- leaflet() %>% addProviderTiles("CartoDB")  %>%  
     fitBounds(  lng1 =9.99, lng2 = 10.02,  lat1 = 53.555, lat2 = 53.583)
   
   for (i in seq_along(lons)){
-    base <- base %>% addPolylines(lons[[i]], lats[[i]], color = cols[i], group = groups[i], weight = 1.5, opacity = 0.7)
+    base <- base %>% addPolylines(lons[[i]], lats[[i]], color = "#9E9E9E", group = groups[i], weight = 1.5, opacity = 0.7)
   }
   base <- base %>% addLayersControl(baseGroups = groups, options = layersControlOptions(collapsed = FALSE))
   return(base)
@@ -350,8 +361,7 @@ Mit `r bind_rows(dat) %>% slice_max(value) %>% pull(value)` Sessions war ich all
 Hierfür verwenden wir eine statische Darstellung der GPS-Strecken:
 
 ```{r fig.height=10, fig.width=10}
-draw_map("Segelpartner", nrow = 3)
-
+draw_map("Segelpartner", nrow = 3, colorize = TRUE)
 ```
 
 > Deutlich zu sehen: Die Regattapartner Christoph, Bernd und Jochem mit ihren Wollknäuel-Strecken.
@@ -419,3 +429,9 @@ Die Datensammlung erfolgt mit den Apps [Komoot](https://www.komoot.de/) und [Wat
   * `prettydoc`
 
 Der Code für alle Berechnungen und Visualisierungen kann in meinem [Github Repository](https://github.com/shosaco/sailing_analyses) heruntergeladen werden, diese Seite ist unter [https://shosaco.github.io/sailing_analyses/](https://shosaco.github.io/sailing_analyses/) erreichbar.
+
+
+```{r img.show = "hold", out.width = "50%", fig.align = "default"}
+knitr::include_graphics("for_import/2020-05-19 18.09.50.jpg")
+knitr::include_graphics("for_import/WhatsApp Image 2020-09-22 at 21.48.55.jpeg")
+```

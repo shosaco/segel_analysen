@@ -91,7 +91,7 @@ if (any(is.na(all_dat$Boot))) stop("Boot fehlt manchmal. Metadaten.xlsx nachtrag
 
 # Management Summary
 
-Dies ist eine Fallstudie zur **explorativen Datenanalyse** auf selbst gesammelten GPS-Daten. Anhang einiger Datenmassage-Pakete (wie `XML` oder `tidyverse`) sowie  Visualisierungen (`ggplot2`, `highcharter`, `leaflet`) können wir Zusammenhänge erkunden, die jedoch nicht weitergehend durch Hypothesentests untersucht werden.
+Dies ist eine Fallstudie zur **explorativen Datenanalyse** auf selbst gesammelten GPS-Daten. Anhand einiger Datenmassage-Pakete (wie `XML` oder `tidyverse`) sowie Visualisierungen (`ggplot2`, `highcharter`, `leaflet`) können wir Zusammenhänge erkunden, die jedoch nicht weitergehend durch Hypothesentests untersucht werden.
 
 # Einleitung
 
@@ -127,7 +127,7 @@ anz <- round(sum(metadata$Distance, na.rm=T) + 40)
 
 Zunächst kann man ohne Aggregation die im Datensatz vorhandenen Tage darstellen.
 
-```{r fig.height=2, fig.width=8, height=200}
+```{r kalender, fig.height=2, fig.width=8, height=200}
 dfr <- tibble(date = seq(floor_date(min(all_dat$Datum), "month"), 
                          ceiling_date(max(all_dat$Datum), 'month') - 1, "day")) %>% 
   mutate(comment = ifelse(date %in% all_dat$Datum, "ja", "nein"))
@@ -166,7 +166,7 @@ Nun kann man den Datensatz nacheinander durch die Brille der enthaltenen Variabl
 
 ## Häufigkeitsverteilung
 
-```{r}
+```{r wochentage_histogram}
 add_colors <- function(df, colname){
   # make same color vector regardless of shape of levels
   set.seed(123)
@@ -205,7 +205,7 @@ make_hist("Wochentag")
 
 Wir benutzen das Paket `Leaflet` zur interaktiven Darstellung aller GPS-Tracks (per Mausrad oder Buttons kann gezoomt werden, die Legende dient zur Umschaltung der verschiedenen Wochentage):
 
-```{r fig.height=6, fig.width=10}
+```{r wochentage_karte, fig.height=6, fig.width=10}
 library(ggmap)
 alster_map <- get_stamenmap(c(left=9.99, right=10.02, bottom=53.555, top=53.583), 
                             zoom=15, maptype = "toner-lite")
@@ -278,7 +278,7 @@ draw_leaflet("Wochentag") #, nrow = 2)
 
 Zu jedem GPS-Punkt ist die momentane Peilung bekannt (die "Fahrtrichtung"). Dies können wir auszählen und als Histogramm (Häufigkeitsdiagramm) wie eine Kompassrose darstellen. Dazu plotten wir die Windrichtung.
 
-```{r}
+```{r kompassrose}
 wind_grad <- c(North = 0, East = 90, South = 180, West = 270, "Nord East" = 45, 
                "South East" = 135, "South West" = 180+45, "North West" = 360-45) %>% 
   as.list() %>% as_tibble %>% t %>% as.data.frame %>% 
@@ -314,7 +314,7 @@ dat_boote <- all_dat %>% distinct(Datum, Boot) %>% count(Boot) %>% slice_max(n)
 make_hist("Boot")
 ```
 
-Mit `r  dat_boote$n` Sessions war `r dat_boote$Boot` mein beliebtestes Boot. Dies lag zum einen daran, dass es ein sehr anfängerfreundliches Boot ist (ich habe meinen Segelschein erst Ende 2019 abgelegt und habe davor noch nie ein Segelboot betreten), der andere Grund findet sich in der [Analyse der Segelpartner](#Häufigkeitsverteilung-3).
+Mit `r dat_boote$n` Sessions war `r dat_boote$Boot` mein beliebtestes Boot. Dies lag zum einen daran, dass es ein sehr anfängerfreundliches Boot ist (ich habe meinen Segelschein erst Ende 2019 abgelegt und habe davor noch nie ein Segelboot betreten), der andere Grund findet sich in der [Analyse der Segelpartner](#Häufigkeitsverteilung-3).
 
 **Beobachtung:** Auf Conger ist gut Segeln lernen.
 

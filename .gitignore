@@ -8,3 +8,6 @@ for_import/
 *.xlsx
 analyse_saison_2020_files/
 Saison_2020.R
+*_en.html
+*_en.Rmd
+debug.log

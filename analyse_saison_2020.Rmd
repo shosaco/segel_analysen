@@ -1,6 +1,6 @@
 ---
 title: "Explorative Datenanalyse von Geodaten in R"
-subtitle: "Was kann man aus 220 Jollen-Meilen auf der Alster lernen? (Oder: Was macht ein segelnder Data Scientist eigentlich im Herbst?)"
+subtitle: "Was kann man aus 220 Jollen-Meilen auf der Alster lernen?<br/>(Oder: Was macht ein segelnder Data Scientist eigentlich im Herbst?)"
 author: Sandro Raabe
 date: '`r format(Sys.Date(), "%d. %B %Y")`'
 output:
@@ -91,6 +91,7 @@ if (any(is.na(all_dat$Boot))) stop("Boot fehlt manchmal. Metadaten.xlsx nachtrag
 
 Dies ist eine Fallstudie zur **explorativen Datenanalyse** auf selbst gesammelten GPS-Daten. Anhand verschiedener Visualisierungen kann man Zusammenhänge erkunden, die jedoch nicht weitergehend durch Hypothesentests untersucht werden.
 
+
 # Einleitung
 Im Frühjahr 2020 bin ich zur [Ostsee Segler Gemeinschaft e.V.](http://www.osgev.de) gestoßen, ein Segelverein mit ca. 20 Booten und etwa 200 Mitgliedern an der Südwest-Seite der Alster. In diesem Sommer habe ich diese ausgiebig genutzt und meine Segelfertigkeiten aufgebaut. Einige dieser Törns habe ich per GPS aufgezeichnet und mit verschiedenen Visualisierungswerkzeugen untersucht. Einige Erkenntnisse:
 
@@ -169,7 +170,7 @@ add_colors <- function(df, colname){
   set.seed(123)
   col <- tibble(sort(unique(as.character(df[[colname]])))) %>% 
     set_names(colname) %>%
-    mutate(col = randomcoloR::distinctColorPalette(n()))
+    mutate(col = hcl.colors(n()))
   if(is.factor(df[[colname]])) col[[colname]] <- factor(col[[colname]], levels = levels(df[[colname]]))
   df %>% left_join(col, colname)
 }
@@ -183,10 +184,10 @@ make_hist <- function(fill_var, dat = all_dat){
   if(fill_var != "Wochentag") d <- d %>% arrange(desc(n))
 
   highchart() %>% hc_chart(type = "column") %>%
-    hc_add_series(data = d$n, name = "Anzahl Sessions",
+    hc_add_series(data = d$n, name = "Anzahl der Sessions",
                   showInLegend = FALSE,
                   dataLabels = list(enabled = TRUE)) %>% 
-    hc_title(text = glue("Anzahl Sessions pro {fill_var}")) %>% 
+    hc_title(text = glue("Anzahl der Sessions pro {fill_var}")) %>% 
     hc_yAxis(text = NULL) %>% 
     hc_xAxis(text = NULL, categories = d$x) %>% 
     hc_colors("#9E9E9E") %>% 
@@ -265,7 +266,7 @@ draw_leaflet("Wochentag") #, nrow = 2)
 
 # Gefahrene Peilungen und Windrichtung
 
-Zu jedem GPS-Punkt ist die momentane Peilung bekannt (die "Fahrtrichtung"). Dies können wir auszählen und als Histogramm (Häufigkeitsdiagramm) wie eine Kompassrose darstellen. Gleichzeitig ist zu jeder Segelsession die Windrichtung bekannt. Beides können wir nebeneinander stellen.
+Zu jedem GPS-Punkt ist die momentane Peilung bekannt (die "Fahrtrichtung"). Dies können wir auszählen und als Histogramm (Häufigkeitsdiagramm) wie eine Kompassrose darstellen.
 
 ```{r}
 all_dat %>% mutate(bin = cut(course, breaks = seq(-1,361, 3))) %>% 
@@ -351,7 +352,7 @@ dat <- all_dat %>% unnest(cols = c(Segelpartner)) %>%
 hchart(dat, type = "treemap", 
        levels = lvl_opts,
        tooltip = list(valueDecimals = 0, valueSuffix = " Sessions")) %>% 
-  hc_title(text = "Größe entspricht Anzahl Sessions")
+  hc_title(text = "Größe entspricht Anzahl der Sessions")
 ```
 
 Mit `r bind_rows(dat) %>% slice_max(value) %>% pull(value)` Sessions war ich allein am öftesten draußen. Dies lag vor allem an den Corona-bedingten Kontaktbeschränkungen im Mai und Juni 2020 - so musste ich gezwungenermaßen das Einhandsegeln erlernen.
@@ -391,7 +392,7 @@ Dies ist nur eine kleine, visualisierungsgetriebene explorative Analyse der Sais
 * Gibt es einen Zusammenhang zwischen Windgeschwindigkeiten und Bootstypen (Wann nehme ich welches Boot?)
 * Außer den `r anz` Seemeilen auf der Alster bin ich im Jahr 2020 noch 280 Seemeilen auf der Ostsee unterwegs gewesen - diese sind hier außen vor, wären allerdings eine eigene Analyse wert.
 
-Diese Fragen könnte man mit Hypothesentests oder anderen *Machine Learning*-Methoden untersuchen, was hier zunächst zu weit führen würde. Die Chips im Keller glühen jedoch schon und 2021 ist auch noch ein Jahr :-)
+Diese Fragen könnte man mit Hypothesentests oder anderen *Machine Learning*-Methoden untersuchen, was hier zunächst zu weit führen würde. Die Computerchips im Keller glühen jedoch schon und 2021 ist auch noch ein Jahr :-)
 
 # Credits
 

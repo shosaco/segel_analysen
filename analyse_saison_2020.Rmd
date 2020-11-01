@@ -17,6 +17,7 @@ variant: markdown_github
 
 ```{r include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+Sys.setlocale("LC_TIME","German_Germany.1252")
 ```
 
 
@@ -25,6 +26,7 @@ knitr::include_graphics("for_import/2019-05-23 20.59.38.jpg")
 ```
 
 ```{r}
+checkpoint::checkpoint("2020-08-01", checkpointLocation = "/")
 library(XML)
 library(dplyr)
 library(readr)
@@ -307,7 +309,7 @@ Der Kurs um 15° (Nord-Nordost) sowie 165° (Süd-Südost) scheint bei mir sehr 
 
 ## Häufigkeitsverteilung
 
-```{r}
+```{r hist_boote}
 dat_boote <- all_dat %>% distinct(Datum, Boot) %>% count(Boot) %>% slice_max(n) 
 make_hist("Boot")
 ```
@@ -318,7 +320,7 @@ Mit `r  dat_boote$n` Sessions war `r dat_boote$Boot` mein beliebtestes Boot. Die
 
 ## Räumliche Verteilung
 
-```{r fig.height=6, fig.width=10}
+```{r boots_leaflet, fig.height=6, fig.width=10}
 draw_leaflet("Boot")#, nrow = 2)
 ```
 
@@ -328,7 +330,7 @@ draw_leaflet("Boot")#, nrow = 2)
 
 Interessant ist natürlich die Frage, mit welchem Boot man wie oft welche Geschwindigkeit (gemessen in Knoten) erreicht hat.
 
-```{r fig.height=5.5, fig.width=12}
+```{r pirate_plot, fig.height=5.5, fig.width=12}
 levels <- metadata %>% group_by(Boot) %>% 
   summarize(meanspeed = mean(mean_speed, na.rm=T), .groups = "drop") %>% 
   arrange(desc(meanspeed)) %>% filter(!is.na(meanspeed)) %>% pull(Boot)
@@ -345,7 +347,7 @@ pirateplot(formula = mean_speed ~ Boot,
 
 ## Häufigkeitsverteilung
 
-```{r}
+```{r segelpartner_treemap}
 lvl_opts <-  list(
   list(
     level = 1,
@@ -382,7 +384,7 @@ Mit `r bind_rows(dat) %>% slice_max(value) %>% pull(value)` Sessions war ich all
 
 Hierfür verwenden wir eine statische Darstellung der GPS-Strecken:
 
-```{r fig.height=10, fig.width=10}
+```{r segelpartner_ggmap, fig.height=10, fig.width=10}
 draw_map("Segelpartner", nrow = 3, colorize = TRUE)
 ```
 
@@ -392,7 +394,7 @@ draw_map("Segelpartner", nrow = 3, colorize = TRUE)
 
 Wir betrachten die zweidimensionale Dichtefunktion der gefahrenen Strecken. Auf deutsch: Man kann die Alster in kleine Quadrate einteilen und zählen, wie oft jedes Quadrat durchfahren wurde. Die Quadrate färbe ich entsprechend der Häufigkeit ihres Durchfahrens ein - häufige durchfahrene Flächen rot, selten durchfahrene grün. So wie eine Corona-Hotspot-Karte eben.
 
-```{r}
+```{r dichteplot}
 ggmap(alster_map) + stat_density2d(aes(x=lon, y=lat,fill=..level.., alpha=..level..), data=all_dat, geom="polygon")+ 
   scale_fill_gradient(low = "green", high = "red") +
   theme(legend.position = "none", axis.ticks = element_blank(), 
@@ -420,7 +422,7 @@ Danke [OSG](https://osgev.de/) für die super Gemeinschaft, die fetzigen Boote u
 
 # Technisches
 
-Die Datensammlung erfolgt mit den Apps [Komoot](https://www.komoot.de/) und [Waterspeed](https://www.waterspeedapp.com/), diese Analyse wurde mit [R 4.0.2](https://www.r-project.org/) und folgenden nützlichen Helfern erstellt: 
+Die Datensammlung erfolgt mit den Apps [Komoot](https://www.komoot.de/) und [Waterspeed](https://www.waterspeedapp.com/), diese Analyse wurde mit [R 4.0](https://www.r-project.org/) und folgenden nützlichen Helfern erstellt: 
 
 * Data Input:
   * `readr`

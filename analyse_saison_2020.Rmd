@@ -21,11 +21,11 @@ Sys.setlocale("LC_TIME","German_Germany.1252")
 ```
 
 
-```{r out.width = "100%", fig.align = "default"}
+```{r titelbild, out.width = "100%", fig.align = "default"}
 knitr::include_graphics("for_import/2019-05-23 20.59.38.jpg")
 ```
 
-```{r}
+```{r read_data}
 checkpoint::checkpoint("2020-08-01", checkpointLocation = "/")
 library(XML)
 library(dplyr)
@@ -341,8 +341,8 @@ levels <- all_dat %>% group_by(Boot) %>%
 dat <- all_dat %>% filter(Boot %in% levels) 
 dat$Boot <- factor(dat$Boot, levels = levels) 
 
-pirateplot(formula = speed ~ Boot,
-           data = dat, inf.f.o = 0.1, point.o = .8) 
+pirateplot(formula = speed ~ Boot,# point.col = "#6B6B6B",
+           data = dat, inf.f.o = 0.1, point.o = .005) 
 ```
 
 **Beobachtung:** Interessanterweise sind die Gewichts-Extreme auch die schnellsten: Die Gleitjolle *470er* und die Kielboote *Kielzugvogel* und *C55*, wobei der Kielzugvogel deutlich die größte Maximalgeschwindigkeit erreicht. Die *J70* ist das Bundesliga-Regatta-Boot und sollte schneller sein, aber an dem einen Tag war wohl nicht viel Wind :-)

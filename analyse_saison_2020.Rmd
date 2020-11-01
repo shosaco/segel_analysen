@@ -1,6 +1,6 @@
 ---
 title: "Explorative Datenanalyse von Geodaten in R"
-subtitle: "Was kann man aus 220 Jollen-Meilen auf der Alster lernen?<br/>(Oder: Was macht ein segelnder Data Scientist eigentlich im Herbst?)"
+subtitle: "Was kann man aus 220 Jollen-Meilen auf der Alster lernen?<br/>(Oder: Ach das macht ein segelnder Data Scientist also im Herbst!)"
 author: Sandro Raabe
 date: '`r format(Sys.Date(), "%d. %B %Y")`'
 output:
@@ -57,7 +57,9 @@ gpx_to_tibble <- function(filename){
 }
 
 waterspeed <- map_dfr(list.files("for_import", pattern = "csv", full.names=T), read_csv) %>% 
-  select(Lon = Long, Lat, Time = Date, Course) %>% rlang::set_names(str_to_lower)
+  select(Lon = Long, Lat, Time = Date, Course, Speed = `Speed (m/s)`) %>%
+  rlang::set_names(str_to_lower) %>% 
+  mutate(across(speed, ~.x*1.4384))
 komoot <- list.files("for_import", pattern = ".gpx$", full.names=T) %>% map_dfr(gpx_to_tibble)
 
 
@@ -83,7 +85,9 @@ metadata <- read_excel("for_import/Metadaten.xlsx") %>%
 
 all_dat <- bind_rows(waterspeed, komoot) %>% filter(year(time) == 2020) %>% 
   arrange(time) %>% distinct() %>% 
-  mutate(Datum = date(time), Wochentag = factor(weekdays(Datum), levels(wday(today(), label=T,abbr = F, week_start = 1)))) %>% 
+  mutate(Datum = date(time), 
+         Wochentag = factor(weekdays(Datum),
+                            levels(wday(today(), label=T,abbr = F, week_start = 1)))) %>% 
   left_join(metadata, "Datum")
 
 if (any(is.na(all_dat$Boot))) stop("Boot fehlt manchmal. Metadaten.xlsx nachtragen!")
@@ -331,17 +335,17 @@ draw_leaflet("Boot")#, nrow = 2)
 Interessant ist natürlich die Frage, mit welchem Boot man wie oft welche Geschwindigkeit (gemessen in Knoten) erreicht hat.
 
 ```{r pirate_plot, fig.height=5.5, fig.width=12}
-levels <- metadata %>% group_by(Boot) %>% 
-  summarize(meanspeed = mean(mean_speed, na.rm=T), .groups = "drop") %>% 
+levels <- all_dat %>% group_by(Boot) %>% 
+  summarize(meanspeed = mean(speed, na.rm=T), .groups = "drop") %>% 
   arrange(desc(meanspeed)) %>% filter(!is.na(meanspeed)) %>% pull(Boot)
-dat <- metadata %>% filter(Boot %in% levels) 
+dat <- all_dat %>% filter(Boot %in% levels) 
 dat$Boot <- factor(dat$Boot, levels = levels) 
 
-pirateplot(formula = mean_speed ~ Boot,
+pirateplot(formula = speed ~ Boot,
            data = dat, inf.f.o = 0.1, point.o = .8) 
 ```
 
-**Beobachtung:** Interessanterweise sind die beiden Gewichts-Extreme auch die schnellsten: Die Gleitjolle *470er* und das Kielboot *C55*. Die *J70* ist das Bundesliga-Regatta-Boot und sollte schneller sein, aber an dem einen Tag war wohl nicht viel Wind :-) Nächste Saison lohnt sich wohl ein Blick zur Rosie (C55)!
+**Beobachtung:** Interessanterweise sind die Gewichts-Extreme auch die schnellsten: Die Gleitjolle *470er* und die Kielboote *Kielzugvogel* und *C55*, wobei der Kielzugvogel deutlich die größte Maximalgeschwindigkeit erreicht. Die *J70* ist das Bundesliga-Regatta-Boot und sollte schneller sein, aber an dem einen Tag war wohl nicht viel Wind :-)
 
 # Segelpartner
 

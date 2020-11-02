@@ -16,7 +16,7 @@ variant: markdown_github
 
 
 ```{r include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, cache = TRUE, cache.comments = FALSE)
 Sys.setlocale("LC_TIME","German_Germany.1252")
 ```
 
@@ -189,7 +189,7 @@ make_hist <- function(fill_var, dat = all_dat){
     count(x)
   
   if(fill_var != "Wochentag") d <- d %>% arrange(desc(n))
-
+  
   highchart() %>% hc_chart(type = "column") %>%
     hc_add_series(data = d$n, name = "Anzahl der Sessions",
                   showInLegend = FALSE,
@@ -255,7 +255,7 @@ draw_leaflet <- function(col_var){
     dat <- dat %>% mutate(across(all_of(col_var), factor, levels = counts$x))
   }
   dat <- add_colors(dat, col_var) %>% arrange(across(c(all_of(col_var), "Datum")))
-   
+  
   all_polylines <- dat %>% group_by(across(all_of(col_var))) %>% 
     summarize(across(c(lon, lat), list), .groups = "drop") %>% select(2:3)
   lons <- all_polylines$lon
@@ -289,7 +289,7 @@ wind_grad <- c(North = 0, East = 90, South = 180, West = 270, "Nord East" = 45,
   tibble::rownames_to_column("wind_angle")
 
 wind_data <- metadata %>% left_join(wind_grad, by = "wind_angle") %>% select(course = V1) %>% 
-    mutate(group = "Windrichtungen") %>% select(course, group) %>%
+  mutate(group = "Windrichtungen") %>% select(course, group) %>%
   map_df(., rep, 1200) %>% mutate(across(course, ~.x + rnorm(n(), 0, 12)))
 
 all_dat %>% select(course) %>% mutate(group = "Fahrtrichtungen") %>% 
@@ -345,7 +345,9 @@ pirateplot(formula = speed ~ Boot,# point.col = "#6B6B6B",
            data = dat, inf.f.o = 0.1, point.o = .005) 
 ```
 
-**Beobachtung:** Interessanterweise sind die Gewichts-Extreme auch die schnellsten: Die Gleitjolle *470er* und die Kielboote *Kielzugvogel* und *C55*, wobei der Kielzugvogel deutlich die größte Maximalgeschwindigkeit erreicht. Die *J70* ist das Bundesliga-Regatta-Boot und sollte schneller sein, aber an dem einen Tag war wohl nicht viel Wind :-)
+Interessant ist hier: Der Kielzugvogel war im Durchschnitt (Bauch der Verteilung) der schnellste, im Median (fette Linie) gewinnt jedoch die 470er - dies liegt an den Ausreißern in der Maximalgeschwindigkeit, die wir mit dem Zugvogel hatten (der Median kümmert sich nicht um Ausreißer, der Durchschnitt jedoch schon).
+
+**Beobachtung:** Interessanterweise sind die Gewichts-Extreme auch die schnellsten: Die leichte Gleitjolle *470er* und die schweren Kielboote *Kielzugvogel* und *C55*, wobei der Kielzugvogel deutlich die größte Maximalgeschwindigkeit erreicht. Die *J70* ist das Bundesliga-Regatta-Boot und sollte schneller sein, aber an dem einen Tag war wohl nicht viel Wind :-)
 
 # Segelpartner
 
@@ -399,7 +401,9 @@ draw_map("Segelpartner", nrow = 3, colorize = TRUE)
 Wir betrachten die zweidimensionale Dichtefunktion der gefahrenen Strecken. Auf deutsch: Man kann die Alster in kleine Quadrate einteilen und zählen, wie oft jedes Quadrat durchfahren wurde. Die Quadrate färbe ich entsprechend der Häufigkeit ihres Durchfahrens ein - häufige durchfahrene Flächen rot, selten durchfahrene grün. So wie eine Corona-Hotspot-Karte eben.
 
 ```{r dichteplot}
-ggmap(alster_map) + stat_density2d(aes(x=lon, y=lat,fill=..level.., alpha=..level..), data=all_dat, geom="polygon")+ 
+ggmap(alster_map) + 
+  stat_density2d(aes(x=lon, y=lat,fill=..level.., alpha=..level..), 
+                 data=all_dat, geom="polygon")+ 
   scale_fill_gradient(low = "green", high = "red") +
   theme(legend.position = "none", axis.ticks = element_blank(), 
         axis.text = element_blank(), 
@@ -429,36 +433,36 @@ Danke [OSG](https://osgev.de/) für die super Gemeinschaft, die fetzigen Boote u
 Die Datensammlung erfolgt mit den Apps [Komoot](https://www.komoot.de/) und [Waterspeed](https://www.waterspeedapp.com/), diese Analyse wurde mit [R 4.0](https://www.r-project.org/) und folgenden nützlichen Helfern erstellt: 
 
 * Data Input:
-  * `readr`
-  * `readxl`
+* `readr`
+* `readxl`
 
 * Data Wrangling:
-  * `dplyr`
-  * `purrr`
-  * `tidyr`
-  * `lubridate`
-  * `glue`
+* `dplyr`
+* `purrr`
+* `tidyr`
+* `lubridate`
+* `glue`
 
 * Grafik:
-  * `highcharter`
-  * `ggplot2`
-  * `randomcoloR`
-  * `yarrr`
+* `highcharter`
+* `ggplot2`
+* `randomcoloR`
+* `yarrr`
 
 * Geoanalyse:
-  * [`Leaflet`](https://CRAN.R-project.org/package=leaflet)
-  * [`ggmap`](http://journal.r-project.org/archive/2013-1/kahle-wickham.pdf)
-  * `XML`
+* [`Leaflet`](https://CRAN.R-project.org/package=leaflet)
+* [`ggmap`](http://journal.r-project.org/archive/2013-1/kahle-wickham.pdf)
+* `XML`
 
 * Output:
-  * `rmarkdown`
-  * `knitr`
-  * `prettydoc`
+* `rmarkdown`
+* `knitr`
+* `prettydoc`
 
 Der Code für alle Berechnungen und Visualisierungen kann in meinem [Github Repository](https://github.com/shosaco/segel_analysen) heruntergeladen werden, diese Seite ist unter [https://shosaco.github.io/segel_analysen](https://shosaco.github.io/segel_analysen) erreichbar.
 
 
-```{r img.show = "hold", out.width = "50%", fig.align = "default"}
+```{r img.show = "hold", out.width = "50%"}
 knitr::include_graphics("for_import/2020-05-19 18.09.50.jpg")
 knitr::include_graphics("for_import/WhatsApp Image 2020-09-22 at 21.48.55.jpeg")
 ```

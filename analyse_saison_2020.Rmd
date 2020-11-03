@@ -27,6 +27,7 @@ knitr::include_graphics("for_import/2019-05-23 20.59.38.jpg")
 
 ```{r read_data}
 checkpoint::checkpoint("2020-08-01", checkpointLocation = "/")
+library(prettydoc)
 library(XML)
 library(dplyr)
 library(readr)
@@ -49,7 +50,7 @@ gpx_to_tibble <- function(filename){
     xmlToList %>%
     .$trk %>%
     (function(x) unlist(x[names(x) == "trkseg"], recursive = FALSE)) %>%
-    map_dfr(function(x) as_tibble(t(unlist(x)))) %>% 
+    map_dfr(compose(as_tibble, t, unlist)) %>% 
     select(-ele) %>% 
     set_names(str_remove, ".attrs.") %>% 
     mutate(across(c("lon", "lat"), as.numeric)) %>% 
@@ -198,7 +199,8 @@ make_hist <- function(fill_var, dat = all_dat){
     hc_yAxis(text = NULL) %>% 
     hc_xAxis(text = NULL, categories = d$x) %>% 
     hc_colors("#9E9E9E") %>% 
-    hc_plotOptions(column = list(colorByPoint = TRUE))
+    hc_plotOptions(column = list(colorByPoint = TRUE)) %>% 
+    hc_size(height = 300)
 }
 make_hist("Wochentag")
 ```
@@ -266,9 +268,14 @@ draw_leaflet <- function(col_var){
     fitBounds(  lng1 =9.99, lng2 = 10.02,  lat1 = 53.555, lat2 = 53.583)
   
   for (i in seq_along(lons)){
-    base <- base %>% addPolylines(lons[[i]], lats[[i]], color = "#9E9E9E", group = groups[i], weight = 1.5, opacity = 0.7)
+    base <- base %>% addPolylines(lons[[i]], lats[[i]], 
+                                  color = "#9E9E9E", 
+                                  group = groups[i], 
+                                  weight = 1.5, opacity = 0.7)
   }
-  base <- base %>% addLayersControl(baseGroups = groups, options = layersControlOptions(collapsed = FALSE))
+  base <- base %>% addLayersControl(baseGroups = groups, 
+                                    position = "topleft",
+                                    options = layersControlOptions(collapsed = FALSE))
   return(base)
 }
 draw_leaflet("Wochentag") #, nrow = 2)
@@ -318,7 +325,7 @@ dat_boote <- all_dat %>% distinct(Datum, Boot) %>% count(Boot) %>% slice_max(n)
 make_hist("Boot")
 ```
 
-Mit `r dat_boote$n` Sessions war `r dat_boote$Boot` mein beliebtestes Boot. Dies lag zum einen daran, dass es ein sehr anfängerfreundliches Boot ist (ich habe meinen Segelschein erst Ende 2019 abgelegt und habe davor noch nie ein Segelboot betreten), der andere Grund findet sich in der [Analyse der Segelpartner](#Häufigkeitsverteilung-3).
+Mit `r dat_boote$n` Sessions war `r dat_boote$Boot` mein beliebtestes Boot. Dies lag zum einen daran, dass es ein sehr anfängerfreundliches Boot ist (ich habe meinen Segelschein erst Ende 2019 abgelegt und habe davor noch nie ein Segelboot betreten), der andere Grund findet sich in der [Analyse der Segelpartner](#häufigkeitsverteilung-2).
 
 **Beobachtung:** Auf Conger ist gut Segeln lernen.
 
@@ -433,31 +440,30 @@ Danke [OSG](https://osgev.de/) für die super Gemeinschaft, die fetzigen Boote u
 Die Datensammlung erfolgt mit den Apps [Komoot](https://www.komoot.de/) und [Waterspeed](https://www.waterspeedapp.com/), diese Analyse wurde mit [R 4.0](https://www.r-project.org/) und folgenden nützlichen Helfern erstellt: 
 
 * Data Input:
-* `readr`
-* `readxl`
+  * `readr`
+  * `readxl`
 
 * Data Wrangling:
-* `dplyr`
-* `purrr`
-* `tidyr`
-* `lubridate`
-* `glue`
+  * `dplyr`
+  * `purrr`
+  * `tidyr`
+  * `lubridate`
+  * `glue`
 
 * Grafik:
-* `highcharter`
-* `ggplot2`
-* `randomcoloR`
-* `yarrr`
+  * `highcharter`
+  * `randomcoloR`
+  * `yarrr`
 
 * Geoanalyse:
-* [`Leaflet`](https://CRAN.R-project.org/package=leaflet)
-* [`ggmap`](http://journal.r-project.org/archive/2013-1/kahle-wickham.pdf)
-* `XML`
+  * [`Leaflet`](https://CRAN.R-project.org/package=leaflet)
+  * [`ggmap`](http://journal.r-project.org/archive/2013-1/kahle-wickham.pdf)
+  * `XML`
 
 * Output:
-* `rmarkdown`
-* `knitr`
-* `prettydoc`
+  * `rmarkdown`
+  * `knitr`
+  * `prettydoc`
 
 Der Code für alle Berechnungen und Visualisierungen kann in meinem [Github Repository](https://github.com/shosaco/segel_analysen) heruntergeladen werden, diese Seite ist unter [https://shosaco.github.io/segel_analysen](https://shosaco.github.io/segel_analysen) erreichbar.
 

@@ -7,6 +7,9 @@ for_import/
 *.gif
 *.xlsx
 analyse_saison_2020_files/
+analyse_saison_2020_cache/
+analyse_saison_2020_en_files/
+analyse_saison_2020_en_cache/
 Saison_2020.R
 *_en.html
 *_en.Rmd

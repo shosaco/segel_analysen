@@ -265,7 +265,7 @@ draw_leaflet <- function(col_var){
   
   groups <- unique(dat[[col_var]])
   base <- leaflet() %>% addProviderTiles("CartoDB")  %>%  
-    fitBounds(  lng1 =9.99, lng2 = 10.02,  lat1 = 53.555, lat2 = 53.583)
+    fitBounds(  lng1 =10.01, lng2 = 10.03,  lat1 = 53.555, lat2 = 53.58)
   
   for (i in seq_along(lons)){
     base <- base %>% addPolylines(lons[[i]], lats[[i]], 

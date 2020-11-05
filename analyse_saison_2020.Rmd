@@ -16,7 +16,7 @@ variant: markdown_github
 
 
 ```{r include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE, cache = TRUE, cache.comments = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
 Sys.setlocale("LC_TIME","German_Germany.1252")
 ```
 
@@ -95,8 +95,8 @@ if (any(is.na(all_dat$Boot))) stop("Boot fehlt manchmal. Metadaten.xlsx nachtrag
 ```
 
 # Management Summary
-
-Dies ist eine Fallstudie zur **explorativen Datenanalyse** auf selbst gesammelten GPS-Daten. Anhand einiger Datenmassage-Pakete (wie `XML` oder `tidyverse`) sowie Visualisierungen (`ggplot2`, `highcharter`, `leaflet`) können wir Zusammenhänge erkunden, die jedoch nicht weitergehend durch Hypothesentests untersucht werden.
+[Click here for English version](https://shosaco.github.io/sailing_analyses)  
+Dies ist eine Fallstudie zur **explorativen Datenanalyse** auf selbst gesammelten GPS-Daten. Anhand einiger Datenmassage-Pakete (wie `XML` oder `tidyverse`) sowie Visualisierungen (`ggplot2`, `highcharter`, `leaflet`) können wir Zusammenhänge erkunden, die jedoch nicht weitergehend durch Hypothesentests untersucht werden. 
 
 # Einleitung
 
@@ -104,7 +104,7 @@ Im Frühjahr 2020 bin ich zur [Ostsee Segler Gemeinschaft e.V.](http://www.osgev
 
 * **Mittwochs** geh ich ungern segeln und **Donnerstags** ist Alster-Erkundungstag.
 * Mit den **Möwen** bleibt man anscheinend lieber **nahe beim OSG-Steg**.
-* **Kielzugvogel** sollte am bei der **Segelbundesliga** mitmachen.
+* Der **Kielzugvogel** sollte bei der **Segelbundesliga** teilnehmen.
 * **Corona** verhilft zu **Einhandsegler-Skills**.
 * Regatta-GPS-Tracks sehen aus wie **Wollknäuel**.
 * Die Mitte der Alster ist (wie zu erwarten) der **Segel-Hotspot**.
@@ -239,7 +239,9 @@ draw_map <- function(col_var, nrow, colorize=FALSE){
     )
   if (col_var == "Wochentag"){
     out <- out + facet_wrap(col_var, nrow = nrow, 
-                            labeller = as_labeller(setNames(unique(glue("Alle {t}e", t = all_dat[[col_var]])), unique(all_dat[[col_var]]))))
+                            labeller = as_labeller(setNames(unique(glue("Alle {t}e", 
+                                                                        t = all_dat[[col_var]])),
+                                                            unique(all_dat[[col_var]]))))
   }else{
     out <- out +
       facet_wrap(col_var, nrow = nrow)
@@ -277,7 +279,6 @@ draw_leaflet <- function(col_var){
   return(base)
 }
 draw_leaflet("Wochentag") #, nrow = 2)
-
 ```
 
 **Beobachtung:** Samstags wagt man sich anscheinend nicht so weit raus, wohingegen man Donnerstags auch mal bis zum Unisteg in den Langen Zug fährt. Dienstags sind die Regatta-Dreieck-Strecken gut zu erkennen (Zoom verwenden).

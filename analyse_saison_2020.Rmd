@@ -102,11 +102,9 @@ Dies ist eine Fallstudie zur **explorativen Datenanalyse** auf selbst gesammelte
 
 Im Frühjahr 2020 bin ich zur [Ostsee Segler Gemeinschaft e.V.](http://www.osgev.de) gestoßen, ein Segelverein mit ca. 20 Booten und etwa 200 Mitgliedern an der Südwest-Seite der Alster. In diesem Sommer habe ich diese ausgiebig genutzt und meine Segelfertigkeiten aufgebaut. Einige dieser Törns habe ich per GPS aufgezeichnet und mit verschiedenen Visualisierungswerkzeugen untersucht. Einige Erkenntnisse:
 
-* **Mittwochs** geh ich ungern segeln.
-* **Donnerstags** ist Alster-Erkundungstag.
+* **Mittwochs** geh ich ungern segeln und **Donnerstags** ist Alster-Erkundungstag.
 * Mit den **Möwen** bleibt man anscheinend lieber **nahe beim OSG-Steg**.
-* Mit Conger und Kielzugvogel kommt man dagegen überall hin.
-* **Conger** sind die *Brot-und-Butter-Boote*.
+* **Kielzugvogel** sollte am bei der **Segelbundesliga** mitmachen.
 * **Corona** verhilft zu **Einhandsegler-Skills**.
 * Regatta-GPS-Tracks sehen aus wie **Wollknäuel**.
 * Die Mitte der Alster ist (wie zu erwarten) der **Segel-Hotspot**.
@@ -335,26 +333,27 @@ Mit `r dat_boote$n` Sessions war `r dat_boote$Boot` mein beliebtestes Boot. Dies
 draw_leaflet("Boot")#, nrow = 2)
 ```
 
-> Beobachtung: Mit Conger und Kielzugvogel kommt man überall hin, mit der Möwe bleibt man lieber nahe beim OSG-Steg.
+**Beobachtung:** Mit Conger und Kielzugvogel kommt man überall hin, mit der Möwe bleibt man lieber nahe beim OSG-Steg.
 
 ## Welches Boot war das schnellste?
 
-Interessant ist natürlich die Frage, mit welchem Boot man wie oft welche Geschwindigkeit (gemessen in Knoten) erreicht hat.
+Interessant ist natürlich die Frage, welches Boot am besten performt. Um den Einfluss der verschiedenen Windgeschwindigkeiten der einzelnen Sessions herauszunehmen, bereinigen wir die gemessene Boots- von der Windgeschwindigkeit und geben die Geschwindigkeit dimensionslos als **Geschwindigkeit in % der Windgeschwindigkeit an** - beträgt diese 100%, so war man genauso schnell wie der Wind unterwegs, bei 50% halb so schnell und so weiter.
 
 ```{r pirate_plot, fig.height=5.5, fig.width=12}
 levels <- all_dat %>% group_by(Boot) %>% 
-  summarize(meanspeed = mean(speed, na.rm=T), .groups = "drop") %>% 
+  summarize(meanspeed = mean(speed/wind_speed*100, na.rm=T), .groups = "drop") %>% 
   arrange(desc(meanspeed)) %>% filter(!is.na(meanspeed)) %>% pull(Boot)
 dat <- all_dat %>% filter(Boot %in% levels) 
 dat$Boot <- factor(dat$Boot, levels = levels) 
 
-pirateplot(formula = speed ~ Boot,# point.col = "#6B6B6B",
-           data = dat, inf.f.o = 0.1, point.o = .005) 
+pirateplot(formula = speed/wind_speed*100 ~ Boot,# point.col = "#6B6B6B",
+           data = dat, point.o = .004) 
+title(main = "Boots-Geschwindigkeit relativ zum Wind")
 ```
 
-Interessant ist hier: Der Kielzugvogel war im Durchschnitt (Bauch der Verteilung) der schnellste, im Median (fette Linie) gewinnt jedoch die 470er - dies liegt an den Ausreißern in der Maximalgeschwindigkeit, die wir mit dem Zugvogel hatten (der Median kümmert sich nicht um Ausreißer, der Durchschnitt jedoch schon).
+Interessant ist hier: Die kleine *Conger* war in der Spitze mehrmals fast doppelt zu schnell wie der Wind, wohingegen die Gleitjollen *470er* und *Laser* im Mittel nur halb so schnell wie der Wind fahren. Diese gehen eben nur bei viel Wind richtig ab, die anderen schon bei weniger.
 
-**Beobachtung:** Interessanterweise sind die Gewichts-Extreme auch die schnellsten: Die leichte Gleitjolle *470er* und die schweren Kielboote *Kielzugvogel* und *C55*, wobei der Kielzugvogel deutlich die größte Maximalgeschwindigkeit erreicht. Die *J70* ist das Bundesliga-Regatta-Boot und sollte schneller sein, aber an dem einen Tag war wohl nicht viel Wind :-)
+**Beobachtung:** Kielzugvogel und J70 (Bundesligaboot) holen am meisten aus dem Wind heraus - vielleicht sollte der Kielzugvogel auch mal bei der Bundesliga mitfahren?
 
 # Segelpartner
 
@@ -381,14 +380,16 @@ dat <- all_dat %>% unnest(cols = c(Segelpartner)) %>%
   mutate(n=1) %>% 
   data_to_hierarchical(group_vars = Segelpartner, size_var = n) %>% 
   bind_rows() %>% 
-  add_colors("name") %>% 
-  select(-color) %>% 
-  rename(color = col) %>% as.list %>% transpose()
+  add_colors("name") %>%
+  select(-color) %>%
+  rename(color = col) %>% 
+  as.list %>% transpose()
 
-hchart(dat, type = "treemap", 
+hchart(dat, type = "treemap", layoutAlgorithm = "strip",
        levels = lvl_opts,
        tooltip = list(valueDecimals = 0, valueSuffix = " Sessions")) %>% 
-  hc_title(text = "Größe entspricht Anzahl der Sessions")
+  hc_title(text = "Größe entspricht Anzahl der Sessions") %>% 
+  hc_size(height = 400)
 ```
 
 Mit `r bind_rows(dat) %>% slice_max(value) %>% pull(value)` Sessions war ich allein am öftesten draußen. Dies lag vor allem an den Corona-bedingten Kontaktbeschränkungen im Mai und Juni 2020 - so musste ich gezwungenermaßen das Einhandsegeln erlernen.

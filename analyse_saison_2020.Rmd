@@ -1,6 +1,6 @@
 ---
 title: "Explorative Datenanalyse von Geodaten in R"
-subtitle: "Was kann man aus 220 Jollen-Meilen auf der Alster lernen?<br/>(Oder: Ach das macht ein segelnder Data Scientist also im Herbst!)"
+subtitle: "Was kann man aus 230 Jollen-Meilen auf der Alster lernen?<br/>(Oder: Ach das macht ein segelnder Data Scientist also im Herbst!)"
 author: Sandro Raabe
 date: '`r format(Sys.Date(), "%d. %B %Y")`'
 output:
@@ -334,7 +334,7 @@ Mit `r dat_boote$n` Sessions war `r dat_boote$Boot` mein beliebtestes Boot. Dies
 draw_leaflet("Boot")#, nrow = 2)
 ```
 
-**Beobachtung:** Mit Conger und Kielzugvogel kommt man überall hin, mit der Möwe bleibt man lieber nahe beim OSG-Steg.
+**Beobachtung:** Mit Conger und Kielzugvogel kommt man überall hin, mit der Möwe bleibt man lieber nahe beim OSG-Steg. Interessant sind wieder die Regatta-Dreiecke der Möwen (mit Zoom erkennbar).
 
 ## Welches Boot war das schnellste?
 
@@ -352,7 +352,7 @@ pirateplot(formula = speed/wind_speed*100 ~ Boot,# point.col = "#6B6B6B",
 title(main = "Boots-Geschwindigkeit relativ zum Wind")
 ```
 
-Interessant ist hier: Die kleine *Conger* war in der Spitze mehrmals fast doppelt zu schnell wie der Wind, wohingegen die Gleitjollen *470er* und *Laser* im Mittel nur halb so schnell wie der Wind fahren. Diese gehen eben nur bei viel Wind richtig ab, die anderen schon bei weniger.
+Interessant ist hier: Die kleine *Conger* war in der Spitze mehrmals fast doppelt zu schnell wie der Wind, wohingegen die Gleitjollen *470er* und *Laser* im Mittel nur halb so schnell wie der Wind fahren. Diese gehen eben nur bei viel Wind richtig ab, die anderen schon bei weniger, vor allem wenn sie leicht sind und eine große Segelfläche haben, wie die beiden Gewinner.
 
 **Beobachtung:** Kielzugvogel und J70 (Bundesligaboot) holen am meisten aus dem Wind heraus - vielleicht sollte der Kielzugvogel auch mal bei der Bundesliga mitfahren?
 
@@ -383,7 +383,7 @@ dat <- all_dat %>% unnest(cols = c(Segelpartner)) %>%
   bind_rows() %>% 
   add_colors("name") %>%
   select(-color) %>%
-  rename(color = col) %>% 
+  rename(color = col) %>%
   as.list %>% transpose()
 
 hchart(dat, type = "treemap", layoutAlgorithm = "strip",
@@ -428,7 +428,7 @@ ggmap(alster_map) +
 Dies ist nur eine kleine, visualisierungsgetriebene explorative Analyse der Saison 2020, überwiegend univariat und ohne Überprüfung der aufgestellten Hypothesen. Aus dieser ergeben sich untersuchenswerte Fragen:
 
 * Kann ich in meinen Daten den Zusammenhang zwischen Bootslänge und Geschwindigkeit sehen?
-* Gibt es einen Zusammenhang zwischen Windgeschwindigkeiten und Bootstypen? Präferiere ich bestimmte Boote bei bestimmten Windverhältnissen?
+* Kann ich das *Yardstick*-System bei der Bootsgeschwindigkeits-Analyse hinzuziehen?
 * Außer den `r anz` Seemeilen auf der Alster bin ich im Jahr 2020 noch 280 Seemeilen auf der Ostsee unterwegs gewesen - diese sind hier außen vor, wären allerdings eine interessante eigene Analyse wert.
 
 Diese Fragen könnte man mit Hypothesentests oder anderen *Machine Learning*-Methoden untersuchen, was hier zunächst zu weit führen würde. Die Computerchips im Keller glühen jedoch schon und 2021 ist auch noch ein Jahr :-)
